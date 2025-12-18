@@ -323,55 +323,12 @@ def main():
     st.title("💼 Job Auto Formatter")
     st.markdown("---")
     
-    # Input section with paste button
-    st.markdown("**Paste job link here...**")
-    
-    # Create columns for input and paste button
-    input_col, paste_col = st.columns([5, 1])
-    
-    with input_col:
-        url = st.text_input(
-            "",
-            placeholder="https://linkedin.com/jobs/view/...",
-            key="job_url",
-            label_visibility="collapsed"
-        )
-    
-    with paste_col:
-        st.markdown("<div style='height: 38px; display: flex; align-items: center;'>", unsafe_allow_html=True)
-        paste_btn = st.button("📋", key="paste_btn", help="Paste from clipboard", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        if paste_btn:
-            # Inject JavaScript to paste from clipboard
-            paste_js = f"""
-            <script>
-            (function() {{
-                async function pasteClipboard() {{
-                    try {{
-                        const text = await navigator.clipboard.readText();
-                        // Find all text inputs and target the one with linkedin placeholder
-                        const inputs = document.querySelectorAll('input[type="text"]');
-                        for (let input of inputs) {{
-                            if (input.placeholder && input.placeholder.includes('linkedin')) {{
-                                input.value = text;
-                                input.focus();
-                                // Trigger events for Streamlit
-                                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                                break;
-                            }}
-                        }}
-                    }} catch(err) {{
-                        console.log('Clipboard access:', err);
-                    }}
-                }}
-                setTimeout(pasteClipboard, 200);
-            }})();
-            </script>
-            """
-            st.markdown(paste_js, unsafe_allow_html=True)
-            st.info("💡 Click the input box and press Ctrl+V (Cmd+V on Mac) to paste, or click 📋 button again")
+    # Input section
+    url = st.text_input(
+        "Paste job link here...",
+        placeholder="https://linkedin.com/jobs/view/...",
+        key="job_url"
+    )
     
     # Generate button
     if st.button("🚀 Generate Job Post", type="primary"):
