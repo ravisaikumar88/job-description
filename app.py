@@ -83,11 +83,33 @@ def shorten_url(url: str):
 
 def format_job_message(data):
     """Format job data into message template"""
+    experience = data.get('experience', '').strip()
+    
+    # Normalize experience to standard format if needed
+    experience_lower = experience.lower()
+    
+    # Map various formats to standard ones
+    if not experience or experience == "":
+        experience = "Fresher"
+    elif "fresher" in experience_lower or "entry level" in experience_lower or "intern" in experience_lower or "graduate" in experience_lower:
+        experience = "Fresher"
+    elif "0-1" in experience or "0 to 1" in experience_lower or "up to 1 year" in experience_lower:
+        experience = "0-1 years"
+    elif "0-2" in experience or "0 to 2" in experience_lower or "1-2" in experience or "1 to 2" in experience_lower or "up to 2 years" in experience_lower:
+        experience = "0-2 years"
+    elif "2-3" in experience or "2 to 3" in experience_lower:
+        experience = "2-3 years"
+    elif "3+" in experience or "3 or more" in experience_lower or "minimum 3" in experience_lower or "3-5" in experience or "3 to 5" in experience_lower or "mid-level" in experience_lower:
+        experience = "3+ years"
+    elif "5+" in experience or "5 or more" in experience_lower or "minimum 5" in experience_lower or "senior" in experience_lower:
+        experience = "5+ years"
+    # If it's already in a good format, keep it as is
+    
     return f"""
 **COMPANY** : {data.get('company', '')}
 **ROLE** : {data.get('role', '')}
 **LOCATION** : {data.get('location', '')}
-**EXPERIENCE** : {data.get('experience', '')}
+**EXPERIENCE** : {experience}
 
 **Apply Link:** {data.get('apply_link', '')}
 
@@ -165,15 +187,16 @@ def extract_job_details(url: str):
             3. Ignore everything else (navigation, recommendations, ads, footers, unrelated content).
             4. Extract these 5 fields:
 
-            - company
-            - role
-            - location
-            - experience (if not available, return "" not None)
-            - apply_link (if not found, return "")
+            - company: Company name
+            - role: Job title/position
+            - location: Job location (city, state/country)
+            - experience: Key requirements/qualifications (MAX 200 characters, extract only essential requirements like years of experience, key skills, or education level. Be concise!)
+            - apply_link: Application URL (if not found, return "")
 
             STRICT RULES:
             - Return ONLY a pure JSON.
             - No comments, no markdown, no explanation.
+            - For experience field: Extract only the most important requirements (e.g., "2-5 years", "Bachelor's degree", "Python, Java"). Keep it SHORT and CONCISE (max 200 chars).
 
             TEXT BELOW:
             {text}
