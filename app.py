@@ -26,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better styling
+# Custom CSS for dark mode styling
 st.markdown("""
     <style>
     .main {
@@ -34,20 +34,36 @@ st.markdown("""
     }
     .stButton>button {
         width: 100%;
-        background-color: #000000;
+        background-color: #FF4B4B;
         color: white;
         font-weight: bold;
         padding: 0.75rem;
         border-radius: 0.5rem;
+        border: none;
     }
     .stButton>button:hover {
-        background-color: #333333;
+        background-color: #FF6B6B;
+        transition: background-color 0.3s;
     }
     .result-box {
-        background-color: #f7f7f7;
+        background-color: #1E1E1E;
+        color: #FAFAFA;
         padding: 1.5rem;
         border-radius: 0.5rem;
         margin-top: 1rem;
+        border: 1px solid #333333;
+    }
+    /* Dark mode text input styling */
+    .stTextInput>div>div>input {
+        background-color: #262730;
+        color: #FAFAFA;
+    }
+    /* Footer styling */
+    .footer {
+        color: #888888;
+    }
+    .footer a {
+        color: #FF4B4B;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -255,9 +271,9 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown("""
-    <div style='text-align: center; color: #666; padding: 1rem;'>
+    <div class='footer' style='text-align: center; color: #888888; padding: 1rem;'>
         <p>For More Job Updates & Important Updates</p>
-        <p>Follow Us On WhatsApp: <a href='https://whatsapp.com/channel/0029VagenEZFSAtDBtDg9v2y' target='_blank'>Join Channel</a></p>
+        <p>Follow Us On WhatsApp: <a href='https://whatsapp.com/channel/0029VagenEZFSAtDBtDg9v2y' target='_blank' style='color: #FF4B4B;'>Join Channel</a></p>
         <p>Reach us at: telugucodingcommunity88@gmail.com</p>
     </div>
     """, unsafe_allow_html=True)

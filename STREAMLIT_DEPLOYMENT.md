@@ -70,12 +70,24 @@ Click "Advanced settings" to configure:
 - Streamlit Cloud supports Python 3.8+
 
 **Secrets** (Environment Variables):
-- Click "Add new secret"
-- Key: `GOOGLE_API_KEY`
-- Value: Your actual Google Gemini API key
-- Click "Add secret"
+- Click on the "Secrets" tab
+- Enter secrets in **TOML format** (not plain key=value)
+- Use this exact format:
+  ```toml
+  GOOGLE_API_KEY = "your_actual_api_key_here"
+  ```
+- **Important**: 
+  - Use quotes around the value
+  - Use `=` with spaces on both sides
+  - Each secret on a new line
+- Click "Save changes"
 
-**Note**: Secrets are encrypted and only accessible to your app.
+**Example:**
+```toml
+GOOGLE_API_KEY = "AIzaSyA83qAYeR0150n3pVxrT-iRs4ThFaYqaBE"
+```
+
+**Note**: Secrets are encrypted and only accessible to your app. Changes take about 1 minute to propagate.
 
 ### 3.5 Deploy
 
