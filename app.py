@@ -65,24 +65,6 @@ st.markdown("""
     .footer a {
         color: #FF4B4B;
     }
-    /* Paste button styling */
-    .paste-btn {
-        background-color: #FF4B4B;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-size: 1.2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        transition: background-color 0.3s;
-    }
-    .paste-btn:hover {
-        background-color: #FF6B6B;
-    }
     </style>
 """, unsafe_allow_html=True)
 
