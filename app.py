@@ -81,29 +81,97 @@ def shorten_url(url: str):
     except:
         return url
 
+def normalize_experience(experience_text: str, role: str = "") -> str:
+    """Normalize experience text to standard format"""
+    if not experience_text:
+        return "Fresher"
+    
+    exp_lower = experience_text.lower()
+    role_lower = role.lower()
+    
+    # Check role first (intern, internship, graduate, fresher, entry level)
+    if any(keyword in role_lower for keyword in ["intern", "internship", "graduate", "fresher", "entry level", "entry-level"]):
+        return "Fresher"
+    
+    # Check for explicit years mentioned
+    import re
+    years_pattern = r'(\d+)[\s-]+(?:to|-|or more|\+)[\s-]*(\d+)?[\s-]*years?'
+    years_match = re.search(years_pattern, exp_lower)
+    
+    if years_match:
+        min_years = int(years_match.group(1))
+        max_years = years_match.group(2)
+        
+        if max_years:
+            max_years = int(max_years)
+            if min_years <= 1:
+                return "0-1 years"
+            elif min_years <= 2:
+                return "0-2 years"
+            elif min_years <= 3:
+                return "2-3 years"
+            else:
+                return "3+ years"
+        else:
+            # Pattern like "3+ years" or "5 or more years"
+            if min_years >= 5:
+                return "5+ years"
+            elif min_years >= 3:
+                return "3+ years"
+            elif min_years >= 2:
+                return "2-3 years"
+            elif min_years >= 1:
+                return "0-2 years"
+            else:
+                return "0-1 years"
+    
+    # Check for keywords in experience text
+    if any(keyword in exp_lower for keyword in ["fresher", "entry level", "entry-level", "no experience", "0 years"]):
+        return "Fresher"
+    
+    if "intern" in exp_lower or "internship" in exp_lower or "graduate" in exp_lower or "pursuing" in exp_lower:
+        return "Fresher"
+    
+    if "senior" in exp_lower or "lead" in exp_lower or "principal" in exp_lower:
+        return "5+ years"
+    
+    if "mid-level" in exp_lower or "mid level" in exp_lower or "experienced" in exp_lower:
+        return "3+ years"
+    
+    if "junior" in exp_lower or "associate" in exp_lower:
+        return "0-2 years"
+    
+    # If no clear indication, check if it mentions specific years
+    if re.search(r'\d+[\s-]+years?', exp_lower):
+        # Extract number
+        num_match = re.search(r'(\d+)[\s-]+years?', exp_lower)
+        if num_match:
+            years = int(num_match.group(1))
+            if years >= 5:
+                return "5+ years"
+            elif years >= 3:
+                return "3+ years"
+            elif years >= 2:
+                return "2-3 years"
+            elif years >= 1:
+                return "0-2 years"
+            else:
+                return "0-1 years"
+    
+    # Default: if it's an intern/graduate role or mentions "pursuing", it's fresher
+    if "pursuing" in exp_lower or "phd" in exp_lower or "student" in exp_lower:
+        return "Fresher"
+    
+    # If we can't determine, default to Fresher for safety
+    return "Fresher"
+
 def format_job_message(data):
     """Format job data into message template"""
-    experience = data.get('experience', '').strip()
-    
-    # Normalize experience to standard format if needed
-    experience_lower = experience.lower()
-    
-    # Map various formats to standard ones
-    if not experience or experience == "":
-        experience = "Fresher"
-    elif "fresher" in experience_lower or "entry level" in experience_lower or "intern" in experience_lower or "graduate" in experience_lower:
-        experience = "Fresher"
-    elif "0-1" in experience or "0 to 1" in experience_lower or "up to 1 year" in experience_lower:
-        experience = "0-1 years"
-    elif "0-2" in experience or "0 to 2" in experience_lower or "1-2" in experience or "1 to 2" in experience_lower or "up to 2 years" in experience_lower:
-        experience = "0-2 years"
-    elif "2-3" in experience or "2 to 3" in experience_lower:
-        experience = "2-3 years"
-    elif "3+" in experience or "3 or more" in experience_lower or "minimum 3" in experience_lower or "3-5" in experience or "3 to 5" in experience_lower or "mid-level" in experience_lower:
-        experience = "3+ years"
-    elif "5+" in experience or "5 or more" in experience_lower or "minimum 5" in experience_lower or "senior" in experience_lower:
-        experience = "5+ years"
-    # If it's already in a good format, keep it as is
+    # Normalize experience to standard format
+    experience = normalize_experience(
+        data.get('experience', ''), 
+        data.get('role', '')
+    )
     
     return f"""
 **COMPANY** : {data.get('company', '')}
@@ -190,13 +258,13 @@ def extract_job_details(url: str):
             - company: Company name
             - role: Job title/position
             - location: Job location (city, state/country)
-            - experience: Key requirements/qualifications (MAX 200 characters, extract only essential requirements like years of experience, key skills, or education level. Be concise!)
+            - experience: Extract the experience/qualification requirements from the job description. Return the full text about experience, years required, or qualifications. Include keywords like "intern", "fresher", "senior", years mentioned, etc.
             - apply_link: Application URL (if not found, return "")
 
             STRICT RULES:
             - Return ONLY a pure JSON.
             - No comments, no markdown, no explanation.
-            - For experience field: Extract only the most important requirements (e.g., "2-5 years", "Bachelor's degree", "Python, Java"). Keep it SHORT and CONCISE (max 200 chars).
+            - For experience field: Return the complete experience/qualification text from the job description (we will process and normalize it in code).
 
             TEXT BELOW:
             {text}
@@ -226,6 +294,12 @@ def extract_job_details(url: str):
         # Shorten the link
         short_link = shorten_url(apply_link)
         cleaned_json["apply_link"] = short_link
+
+        # Normalize experience field before formatting
+        cleaned_json["experience"] = normalize_experience(
+            cleaned_json.get("experience", ""),
+            cleaned_json.get("role", "")
+        )
 
         formatted_message = format_job_message(cleaned_json)
         
