@@ -11,34 +11,58 @@ function App() {
       return;
     }
 
-    setResult("Processing...");
+    setResult("Processing... (This may take 30-60 seconds if the server is waking up)");
 
     try {
       // Use environment variable or fallback to production backend URL
-      const apiUrl = import.meta.env.VITE_API_URL || "https://job-description-1wnm.onrender.com";
-      const response = await fetch(`${apiUrl}/extract`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      let apiUrl = import.meta.env.VITE_API_URL || "https://job-description-1wnm.onrender.com";
+      // Remove trailing slash if present
+      apiUrl = apiUrl.replace(/\/$/, "");
       
-      if (data.status === "error") {
-        setResult(`Error: ${data.message || "Failed to extract job details"}`);
-      } else {
-        setResult(data.formatted_message || "Error generating message.");
+      console.log("Connecting to backend:", apiUrl);
+      
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for cold starts
+      
+      try {
+        const response = await fetch(`${apiUrl}/extract`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.status === "error") {
+          setResult(`Error: ${data.message || "Failed to extract job details"}`);
+        } else {
+          setResult(data.formatted_message || "Error generating message.");
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error("Request timed out. The server may be waking up. Please try again in a few seconds.");
+        }
+        throw fetchError;
       }
     } catch (error) {
       console.error("Extraction error:", error);
-      setResult(`Backend error: ${error.message || "Make sure the server is running."}`);
+      if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+        setResult("Cannot connect to backend. The server may be sleeping (Render free tier). Please wait 30-60 seconds and try again, or check if the backend URL is correct.");
+      } else {
+        setResult(`Backend error: ${error.message || "Make sure the server is running."}`);
+      }
     }
   };
 

@@ -198,4 +198,12 @@ def extract_job_details(request: JobRequest):
 
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        import traceback
+        error_details = str(e)
+        print(f"Error in extract_job_details: {error_details}")
+        print(traceback.format_exc())
+        return {
+            "status": "error", 
+            "message": error_details,
+            "error_type": type(e).__name__
+        }
