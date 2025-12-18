@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import requests
-import google.generativeai as genai
+import google.genai as genai
 from bs4 import BeautifulSoup
 import json
 import re
@@ -12,10 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Configure Gemini
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-else:
+# Note: Configuration is done per-request with the new google.genai API
+if not GEMINI_API_KEY:
     st.error("⚠️ GOOGLE_API_KEY not found in environment variables!")
 
 # Page configuration
@@ -282,9 +280,15 @@ def extract_job_details(url: str):
         if not GEMINI_API_KEY:
             raise Exception("Google API key not configured")
 
-        model = genai.GenerativeModel("models/gemini-2.5-flash")
-        ai_response = model.generate_content(prompt)
-        cleaned_json = clean_ai_json(ai_response.text)
+        # Use new google.genai API
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-exp",
+            contents=prompt
+        )
+        # Extract text from response - new API returns response object
+        ai_text = response.text
+        cleaned_json = clean_ai_json(ai_text)
 
         # Auto-fill missing apply_link
         apply_link = cleaned_json.get("apply_link", "")
