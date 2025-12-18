@@ -174,12 +174,12 @@ def format_job_message(data):
     )
     
     return f"""
-**COMPANY** : {data.get('company', '')}
-**ROLE** : {data.get('role', '')}
-**LOCATION** : {data.get('location', '')}
-**EXPERIENCE** : {experience}
+*COMPANY* : {data.get('company', '')}
+*ROLE* : {data.get('role', '')}
+*LOCATION* : {data.get('location', '')}
+*EXPERIENCE* : {experience}
 
-**Apply Link:** {data.get('apply_link', '')}
+*Apply Link:* {data.get('apply_link', '')}
 
 For More Job Updates & Important Updates Like this  
 Follow Us On WhatsApp :  
