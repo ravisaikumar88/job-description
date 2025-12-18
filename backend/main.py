@@ -16,14 +16,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # CORS configuration - allow all origins for production
 # In production, you can restrict this to your frontend domain
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "*")
+if allowed_origins_env == "*":
+    # When using wildcard, credentials must be False
+    allowed_origins = ["*"]
+    allow_credentials = False
+else:
+    # When specifying origins, we can use credentials
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+    allow_credentials = True
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if "*" not in allowed_origins else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],  # allow all HTTP methods
-    allow_headers=["*"],  # allow all headers
+    allow_origins=allowed_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
+    allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -32,6 +41,14 @@ def home():
     return {
         "status": "Job Auto Formatter API is running",
         "gemini_key_loaded": GEMINI_API_KEY is not None,
+    }
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for keep-alive pings"""
+    return {
+        "status": "healthy",
+        "service": "Job Auto Formatter API"
     }
 
 from pydantic import BaseModel
@@ -112,6 +129,11 @@ def fetch_dynamic_html(url: str):
     except Exception as e:
         print("Dynamic fetch error:", e)
         return ""
+
+@app.options("/extract")
+async def options_extract():
+    """Handle CORS preflight for /extract endpoint"""
+    return {"message": "OK"}
 
 @app.post("/extract")
 def extract_job_details(request: JobRequest):
