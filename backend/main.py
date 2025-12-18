@@ -26,13 +26,14 @@ else:
     allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
     allow_credentials = True
 
+# Configure CORS - FastAPI middleware automatically handles OPTIONS requests
+# Note: When allow_origins=["*"], allow_credentials must be False
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=allow_credentials,
-    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
 )
 
 
@@ -129,11 +130,6 @@ def fetch_dynamic_html(url: str):
     except Exception as e:
         print("Dynamic fetch error:", e)
         return ""
-
-@app.options("/extract")
-async def options_extract():
-    """Handle CORS preflight for /extract endpoint"""
-    return {"message": "OK"}
 
 @app.post("/extract")
 def extract_job_details(request: JobRequest):
