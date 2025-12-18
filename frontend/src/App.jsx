@@ -14,7 +14,8 @@ function App() {
     setResult("Processing...");
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+      // Use environment variable or fallback to production backend URL
+      const apiUrl = import.meta.env.VITE_API_URL || "https://job-description-1wnm.onrender.com";
       const response = await fetch(`${apiUrl}/extract`, {
         method: "POST",
         headers: {
@@ -23,10 +24,21 @@ function App() {
         body: JSON.stringify({ url }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
-      setResult(data.formatted_message || "Error generating message.");
+      
+      if (data.status === "error") {
+        setResult(`Error: ${data.message || "Failed to extract job details"}`);
+      } else {
+        setResult(data.formatted_message || "Error generating message.");
+      }
     } catch (error) {
-      setResult("Backend error. Make sure the server is running.");
+      console.error("Extraction error:", error);
+      setResult(`Backend error: ${error.message || "Make sure the server is running."}`);
     }
   };
 
