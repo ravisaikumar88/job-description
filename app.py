@@ -211,17 +211,42 @@ def fetch_dynamic_html(url: str):
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
             page.goto(url, timeout=60000)
-            page.wait_for_load_state("networkidle")
+            # Wait longer for Workday pages which load slowly
+            page.wait_for_load_state("networkidle", timeout=30000)
+            # Additional wait for dynamic content
+            page.wait_for_timeout(3000)
             html = page.content()
             browser.close()
             return html
     except Exception as e:
-        st.error(f"Dynamic fetch error: {e}")
+        error_msg = str(e)
+        if "Executable doesn't exist" in error_msg or "playwright install" in error_msg.lower():
+            st.error("""
+            ⚠️ **Playwright browser not installed!**
+            
+            **For Streamlit Cloud:**
+            1. Go to your app Settings in Streamlit Cloud dashboard
+            2. Add build command: `python -m playwright install chromium`
+            3. Redeploy your app
+            
+            **For local development:**
+            Run: `playwright install chromium`
+            
+            See `STREAMLIT_CLOUD_SETUP.md` for detailed instructions.
+            """)
+        else:
+            st.error(f"Dynamic fetch error: {e}")
         return ""
 
 def extract_job_details(url: str):
     """Extract job details from URL"""
     try:
+        # Check if this is a Workday or other JS-heavy site that needs Playwright
+        needs_playwright = any(domain in url.lower() for domain in [
+            'workdayjobs.com', 'workday.com', 'myworkdayjobs.com',
+            'greenhouse.io', 'lever.co', 'smartrecruiters.com'
+        ])
+        
         # 1. Download HTML
         response = requests.get(url, timeout=10, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -232,44 +257,83 @@ def extract_job_details(url: str):
         soup = BeautifulSoup(html, "html.parser")
         text = soup.get_text(separator=" ", strip=True)
         
-        # If text is too short (likely LinkedIn), use Playwright fallback
-        if len(text) < 300:
+        # Use Playwright for Workday/JS-heavy sites or if text is too short
+        if needs_playwright or len(text) < 300:
             with st.spinner("Fetching dynamic content (this may take 30-60 seconds)..."):
                 dynamic_html = fetch_dynamic_html(url)
                 if dynamic_html:
                     soup = BeautifulSoup(dynamic_html, "html.parser")
-                    text = soup.get_text(separator=" ", strip=True)
+                    
+                    # Try to extract Workday-specific content
+                    if 'workday' in url.lower():
+                        # Workday job description is usually in specific sections
+                        job_sections = []
+                        # Try multiple Workday selectors
+                        for selector in [
+                            'div[data-automation-id="jobPostingDescription"]',
+                            'div[data-automation-id="jobPostingHeader"]',
+                            'section[data-automation-id="jobPosting"]',
+                            'div[class*="jobPosting"]',
+                            'div[class*="jobDescription"]'
+                        ]:
+                            elements = soup.select(selector)
+                            if elements:
+                                job_sections.extend([elem.get_text(separator=" ", strip=True) for elem in elements])
+                        
+                        if job_sections:
+                            text = " ".join(job_sections)
+                        else:
+                            # Fallback: get all text but prioritize main content
+                            text = soup.get_text(separator=" ", strip=True)
+                    else:
+                        # LinkedIn-specific extraction
+                        job_desc_div = soup.find("div", {"data-test-job-description": True})
+                        if job_desc_div:
+                            text = job_desc_div.get_text(separator=" ", strip=True)
+                        else:
+                            text = soup.get_text(separator=" ", strip=True)
+                elif needs_playwright:
+                    # If Playwright failed but we need it, show error
+                    return {
+                        "status": "error",
+                        "message": "Failed to fetch dynamic content. Please ensure Playwright is installed: playwright install chromium"
+                    }
 
-                    # Extract only the real job description on LinkedIn
-                    job_desc_div = soup.find("div", {"data-test-job-description": True})
-                    if job_desc_div:
-                        text = job_desc_div.get_text(separator=" ", strip=True)
-
-        # 3. Gemini Prompt
+        # 3. Gemini Prompt - Enhanced to prevent hallucinations
         prompt = f"""
             You will receive raw webpage text extracted from a job posting page.
 
-            Your task:
-            1. Read the text.
-            2. Identify the *actual job description section*.
-            3. Ignore everything else (navigation, recommendations, ads, footers, unrelated content).
-            4. Extract these 5 fields:
+            CRITICAL INSTRUCTIONS:
+            1. Extract information ONLY from the text provided below.
+            2. DO NOT make up, guess, or hallucinate any information.
+            3. If a field is not clearly present in the text, return an empty string "" for that field.
+            4. The company name must match exactly what is in the text - do not substitute with other companies.
+            5. The job role/title must match exactly what is in the text.
+            6. The location must match exactly what is in the text.
 
-            - company: Company name
-            - role: Job title/position
-            - location: Job location (city, state/country)
-            - experience: Extract the experience/qualification requirements from the job description. Return the full text about experience, years required, or qualifications. Include keywords like "intern", "fresher", "senior", years mentioned, etc.
-            - apply_link: Application URL (if not found, return "")
+            Your task:
+            1. Read the text carefully.
+            2. Identify the *actual job description section* from this specific job posting.
+            3. Ignore everything else (navigation, recommendations, ads, footers, unrelated content, other job listings).
+            4. Extract these 5 fields from THIS SPECIFIC JOB POSTING ONLY:
+
+            - company: Company name (must be exact match from text, do not guess)
+            - role: Job title/position (must be exact match from text)
+            - location: Job location (city, state/country - must be from this job posting)
+            - experience: Extract the experience/qualification requirements from the job description. Return the full text about experience, years required, or qualifications. Include keywords like "intern", "fresher", "senior", years mentioned, etc. If not found, return "".
+            - apply_link: Application URL (if not found in text, return "")
 
             STRICT RULES:
-            - Return ONLY a pure JSON.
-            - No comments, no markdown, no explanation.
-            - For experience field: Return the complete experience/qualification text from the job description (we will process and normalize it in code).
+            - Return ONLY a pure JSON object.
+            - No comments, no markdown, no explanation, no code blocks.
+            - DO NOT invent or guess information that is not in the text.
+            - If you cannot find clear information, return empty string "" for that field.
+            - The company name MUST be from the actual text provided, not from your knowledge.
 
-            TEXT BELOW:
-            {text}
+            TEXT FROM WEBPAGE:
+            {text[:5000]}
 
-            OUTPUT JSON FORMAT:
+            OUTPUT JSON FORMAT (return only the JSON, nothing else):
             {{
             "company": "",
             "role": "",
