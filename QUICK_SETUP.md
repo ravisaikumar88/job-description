@@ -1,8 +1,8 @@
 # 🚀 Quick Setup Guide for Streamlit Cloud
 
-## What You Need to Do NOW:
+## ✅ What You Need to Do NOW:
 
-### 1. ✅ Push Latest Code to GitHub
+### 1. **Push Latest Code to GitHub**
 
 ```bash
 git add .
@@ -10,33 +10,53 @@ git commit -m "Fix Workday extraction and add Playwright setup"
 git push
 ```
 
-### 2. ✅ Install Playwright Browser in Streamlit Cloud
+**Streamlit Cloud will automatically rebuild!**
 
-**Go to Streamlit Cloud Dashboard:**
-1. Open your app: https://share.streamlit.io
-2. Click on your app → **"Settings"** or **"⚙️"** icon
-3. Look for **"Build command"** or **"Post-install command"** field
-4. Add this command:
-   ```
-   python -m playwright install chromium
-   ```
-5. Click **"Save"** or **"Redeploy"**
+---
 
-### 3. ✅ Verify Environment Variables
+## 📋 Required Files (Already Created)
 
-In Streamlit Cloud Settings → **"Secrets"** tab, make sure you have:
+Your repo now has:
+
+- ✅ `packages.txt` - Contains `playwright` and `chromium`
+- ✅ `postBuild` - Contains `python -m playwright install chromium` (no extension!)
+- ✅ `app.py` - Fixed Workday detection and improved extraction
+- ✅ `requirements.txt` - Already has Playwright
+
+### Folder Structure:
+```
+your-streamlit-app/
+│
+├─ app.py
+├─ requirements.txt
+├─ packages.txt        ← Contains: playwright, chromium
+└─ postBuild           ← Contains: python -m playwright install chromium
+```
+
+---
+
+## ✅ Verify Environment Variables
+
+In Streamlit Cloud Dashboard:
+1. Go to your app → **Settings** → **Secrets** tab
+2. Make sure you have:
 
 ```toml
 GOOGLE_API_KEY = "your_actual_api_key_here"
 ```
 
-### 4. ✅ Wait for Redeployment
+---
 
-- Streamlit Cloud will automatically redeploy (2-5 minutes)
-- Watch the build logs for any errors
-- Look for "Playwright" installation messages
+## ✅ Wait for Auto-Redeployment
 
-### 5. ✅ Test Your App
+- Streamlit Cloud automatically detects your push
+- It will rebuild with the new `postBuild` script
+- Wait 2-5 minutes for deployment
+- Watch build logs for "Playwright" installation messages
+
+---
+
+## ✅ Test Your App
 
 Try this URL:
 ```
@@ -47,32 +67,31 @@ It should now extract **Sprinklr** job details correctly!
 
 ---
 
-## 📋 Files Updated:
+## 🎯 What's Fixed:
 
-- ✅ `app.py` - Fixed Workday detection and improved extraction
-- ✅ `packages.txt` - Added Playwright system dependencies
-- ✅ `requirements.txt` - Already has Playwright
-- ✅ `setup.sh` - Created (optional, if Streamlit Cloud supports it)
-
-## ❌ If Build Command Doesn't Work:
-
-Some Streamlit Cloud plans don't support build commands. In that case:
-
-1. **Check if `packages.txt` helps** - It's already updated with dependencies
-2. **Contact Streamlit Support** - Ask about Playwright browser installation
-3. **Alternative**: Consider using Render/Railway which definitely support Playwright
+- ✅ **Workday Detection** - Automatically detects Workday URLs
+- ✅ **Playwright Setup** - Installs via `postBuild` script
+- ✅ **Better Extraction** - Workday-specific selectors
+- ✅ **No More Hallucinations** - Improved AI prompt prevents wrong company extraction
 
 ---
 
-## 🎯 Expected Result:
+## 📝 Important Notes:
 
-After setup, your app should:
-- ✅ Detect Workday URLs automatically
-- ✅ Use Playwright for dynamic content
-- ✅ Extract correct company/job information
-- ✅ No more "Amazon" hallucinations!
+- **No UI Settings Needed** - Streamlit Cloud removed "Build commands" UI
+- **Files Do the Work** - `postBuild` and `packages.txt` handle everything
+- **Auto-Redeploy** - Just push to GitHub, Streamlit Cloud rebuilds automatically
 
 ---
 
-**Need help?** Check `STREAMLIT_CLOUD_SETUP.md` for detailed troubleshooting.
+## 🟢 Local Development
 
+If testing locally, run once:
+
+```bash
+playwright install chromium
+```
+
+---
+
+**That's it! Your app should work after the next deployment! 🎉**

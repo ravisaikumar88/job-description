@@ -1,130 +1,139 @@
 # Streamlit Cloud Setup - Post Deployment
 
-Since you've already deployed to Streamlit Cloud, here's what you need to do:
+## ✅ Current Method (New Streamlit Cloud Dashboard)
 
-## ✅ Step 1: Verify Your Files
-
-Make sure these files are in your GitHub repository:
-
-- ✅ `app.py` (with latest changes)
-- ✅ `requirements.txt` (with `playwright>=1.40.0`)
-- ✅ `packages.txt` (can be empty, but file must exist)
-
-## ✅ Step 2: Install Playwright Browsers
-
-**IMPORTANT**: Streamlit Cloud needs Playwright browsers installed. You have two options:
-
-### Option A: Add Build Command (Recommended)
-
-1. Go to your Streamlit Cloud app dashboard
-2. Click "Settings" or "Manage app"
-3. Look for "Build command" or "Post-install command"
-4. Add this command:
-   ```bash
-   python -m playwright install chromium && python -m playwright install-deps chromium
-   ```
-5. Save and redeploy
-
-### Option B: Manual Installation via Streamlit Cloud Shell
-
-If Option A doesn't work:
-
-1. Go to Streamlit Cloud dashboard
-2. Find "Shell" or "Terminal" access (if available)
-3. Run:
-   ```bash
-   python -m playwright install chromium
-   python -m playwright install-deps chromium
-   ```
-
-### Option C: Use setup.sh (Alternative)
-
-If Streamlit Cloud supports setup scripts:
-
-1. Make sure `setup.sh` is in your repo
-2. Make it executable: `chmod +x setup.sh`
-3. Streamlit Cloud should run it automatically
-
-## ✅ Step 3: Verify Environment Variables
-
-1. Go to Streamlit Cloud app settings
-2. Click "Secrets" tab
-3. Make sure you have:
-   ```toml
-   GOOGLE_API_KEY = "your_actual_api_key_here"
-   ```
-4. Save changes
-
-## ✅ Step 4: Push Latest Code
-
-Make sure your latest code changes are pushed to GitHub:
-
-```bash
-git add .
-git commit -m "Fix Workday extraction and Playwright setup"
-git push
-```
-
-Streamlit Cloud will automatically redeploy.
-
-## ✅ Step 5: Test Your App
-
-1. Wait for deployment to complete (2-5 minutes)
-2. Test with the Sprinklr Workday URL:
-   ```
-   https://sprinklr.wd1.myworkdayjobs.com/en-US/careers/job/Product-Engineer_111920-JOB
-   ```
-3. Check if it extracts the correct job information
-
-## 🔧 Troubleshooting
-
-### If Playwright still doesn't work:
-
-1. **Check build logs** in Streamlit Cloud dashboard
-2. **Look for errors** about Playwright browser installation
-3. **Try adding to packages.txt**:
-   ```
-   libnss3
-   libatk-bridge2.0-0
-   libdrm2
-   libxkbcommon0
-   libxcomposite1
-   libxdamage1
-   libxfixes3
-   libxrandr2
-   libgbm1
-   libasound2
-   ```
-
-### If you get "Executable doesn't exist" error:
-
-The Playwright browser isn't installed. Follow Step 2 above.
-
-### If extraction still shows wrong company:
-
-1. Check the app logs in Streamlit Cloud
-2. Verify the URL is correct
-3. The AI might be hallucinating - the updated prompt should fix this
-
-## 📝 Current Status Checklist
-
-- [ ] Latest code pushed to GitHub
-- [ ] Playwright browsers installed (Step 2)
-- [ ] GOOGLE_API_KEY set in Secrets
-- [ ] App redeployed successfully
-- [ ] Tested with Workday URL
-- [ ] Extraction works correctly
-
-## 🚀 Next Steps
-
-Once everything works:
-1. Share your app URL with users
-2. Monitor usage in Streamlit Cloud dashboard
-3. Check logs if users report issues
+**Streamlit Cloud removed the "Build commands" UI.** Now you must use files in your GitHub repo.
 
 ---
 
-**Note**: If Streamlit Cloud doesn't support build commands, you may need to:
-- Use a different deployment platform (Render, Railway) that supports Playwright
-- Or use an alternative scraping method that doesn't require Playwright
+## 📋 Required Files
 
+### 1. `packages.txt`
+
+Contains:
+```
+playwright
+chromium
+```
+
+### 2. `postBuild` (no extension, executable)
+
+Contains:
+```
+python -m playwright install chromium
+```
+
+⚠️ **Important**: 
+- File name is exactly `postBuild` (no `.sh`, no `.txt`)
+- Must be executable (GitHub handles this automatically)
+- One command per line
+
+---
+
+## ✅ Step-by-Step Setup
+
+### Step 1: Verify Files in Your Repo
+
+Make sure these files exist:
+
+```
+your-repo/
+├─ app.py
+├─ requirements.txt
+├─ packages.txt        ← Should contain: playwright, chromium
+└─ postBuild           ← Should contain: python -m playwright install chromium
+```
+
+### Step 2: Push to GitHub
+
+```bash
+git add .
+git commit -m "Add Playwright setup files"
+git push
+```
+
+### Step 3: Streamlit Cloud Auto-Rebuilds
+
+- Streamlit Cloud detects the push
+- Runs `postBuild` script automatically
+- Installs Playwright browser during build
+- Deploys your app
+
+### Step 4: Verify Environment Variables
+
+In Streamlit Cloud Dashboard:
+1. Go to your app → **Settings** → **Secrets**
+2. Ensure you have:
+
+```toml
+GOOGLE_API_KEY = "your_actual_api_key_here"
+```
+
+### Step 5: Test
+
+Try a Workday URL:
+```
+https://sprinklr.wd1.myworkdayjobs.com/en-US/careers/job/Product-Engineer_111920-JOB
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Build Fails with "Playwright not found"
+
+**Check:**
+1. ✅ `packages.txt` exists and contains `playwright`
+2. ✅ `postBuild` exists (no extension) and contains install command
+3. ✅ Files are committed and pushed to GitHub
+4. ✅ Check build logs in Streamlit Cloud dashboard
+
+### "Executable doesn't exist" Error
+
+**Solution:**
+- The `postBuild` script should install the browser
+- Check build logs to see if `postBuild` ran successfully
+- Verify the command in `postBuild` is correct: `python -m playwright install chromium`
+
+### Still Getting Wrong Company Extraction
+
+**Check:**
+1. ✅ Latest `app.py` is pushed (with Workday detection fixes)
+2. ✅ Test with a fresh deployment
+3. ✅ Check app logs for any errors
+
+---
+
+## 📝 What Changed in Streamlit Cloud
+
+**Old Method (No Longer Available):**
+- ❌ Build commands in UI settings
+- ❌ Post-install commands in dashboard
+
+**New Method (Current):**
+- ✅ `packages.txt` for system packages
+- ✅ `postBuild` script for post-install commands
+- ✅ All configuration via files in repo
+
+---
+
+## 🎯 Expected Result
+
+After successful setup:
+- ✅ Playwright browser installed automatically
+- ✅ Workday URLs detected and processed correctly
+- ✅ Correct company/job information extracted
+- ✅ No more "Amazon" or wrong company hallucinations
+
+---
+
+## 🚀 Next Steps
+
+1. ✅ Push code with `postBuild` and updated `packages.txt`
+2. ✅ Wait for auto-rebuild (2-5 minutes)
+3. ✅ Test with Workday URLs
+4. ✅ Monitor logs if issues occur
+
+---
+
+**Need Help?** Check build logs in Streamlit Cloud dashboard for detailed error messages.
