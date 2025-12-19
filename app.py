@@ -221,19 +221,49 @@ def fetch_dynamic_html(url: str):
     except Exception as e:
         error_msg = str(e)
         if "Executable doesn't exist" in error_msg or "playwright install" in error_msg.lower():
-            st.error("""
-            ⚠️ **Playwright browser not installed!**
-            
-            **For Streamlit Cloud:**
-            1. Go to your app Settings in Streamlit Cloud dashboard
-            2. Add build command: `python -m playwright install chromium`
-            3. Redeploy your app
-            
-            **For local development:**
-            Run: `playwright install chromium`
-            
-            See `STREAMLIT_CLOUD_SETUP.md` for detailed instructions.
-            """)
+            # Try to install Playwright browser as fallback (runs once per session)
+            if 'playwright_install_attempted' not in st.session_state:
+                st.session_state.playwright_install_attempted = True
+                with st.spinner("📦 Installing Playwright browser (this may take 1-2 minutes)..."):
+                    try:
+                        import subprocess
+                        import sys
+                        result = subprocess.run(
+                            [sys.executable, "-m", "playwright", "install", "chromium"],
+                            capture_output=True,
+                            text=True,
+                            timeout=300
+                        )
+                        if result.returncode == 0:
+                            st.success("✅ Playwright browser installed! Please try again.")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Installation failed: {result.stderr}")
+                    except Exception as install_error:
+                        st.warning(f"⚠️ Could not install automatically: {install_error}")
+                        st.error("""
+                        ⚠️ **Playwright browser not installed!**
+                        
+                        **For Streamlit Cloud:**
+                        1. Ensure `postBuild` file exists (no extension)
+                        2. Contains: `python -m playwright install chromium`
+                        3. Check build logs for installation errors
+                        
+                        **For local development:**
+                        Run: `playwright install chromium`
+                        """)
+            else:
+                st.error("""
+                ⚠️ **Playwright browser not installed!**
+                
+                **For Streamlit Cloud:**
+                1. Ensure `postBuild` file exists (no extension)
+                2. Contains: `python -m playwright install chromium`
+                3. Check build logs for installation errors
+                
+                **For local development:**
+                Run: `playwright install chromium`
+                """)
         else:
             st.error(f"Dynamic fetch error: {e}")
         return ""
