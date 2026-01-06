@@ -201,10 +201,10 @@ def format_job_message(data):
     return f"""
 *COMPANY* : {company}
 *ROLE* : {role}
-**LOCATION** : {location}
-**EXPERIENCE** : {experience}
+*LOCATION* : {location}
+*EXPERIENCE* : {experience}
 
-**Apply Link:** {data.get('apply_link', '')}
+*Apply Link:* {data.get('apply_link', '')}
 
 For More Job Updates & Important Updates Like this  
 Follow Us On WhatsApp :  
