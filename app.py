@@ -241,7 +241,10 @@ def fetch_dynamic_html(url: str):
         with sync_playwright() as p:
             # Try to launch browser with explicit options
             try:
-                browser = p.chromium.launch(headless=True)
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                )
             except Exception as launch_error:
                 # If browser not found, try to install it
                 if "Executable doesn't exist" in str(launch_error) or "doesn't exist" in str(launch_error):
@@ -249,7 +252,10 @@ def fetch_dynamic_html(url: str):
                     try:
                         subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], 
                                       check=True, timeout=300)
-                        browser = p.chromium.launch(headless=True)
+                        browser = p.chromium.launch(
+                            headless=True,
+                            args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                        )
                     except Exception as install_error:
                         st.error(f"Failed to install Playwright browser: {install_error}")
                         return ""
@@ -257,13 +263,45 @@ def fetch_dynamic_html(url: str):
                     raise launch_error
             
             page = browser.new_page()
-            page.goto(url, timeout=60000, wait_until="networkidle")
-            html = page.content()
+            
+            # Try multiple wait strategies with increasing timeouts
+            html = None
+            wait_strategies = [
+                ("domcontentloaded", 30000),  # 30s - faster, less reliable
+                ("load", 60000),               # 60s - medium
+                ("networkidle", 90000),        # 90s - slowest but most complete
+            ]
+            
+            for wait_until, timeout in wait_strategies:
+                try:
+                    page.goto(url, timeout=timeout, wait_until=wait_until)
+                    # Wait a bit more for dynamic content to load
+                    page.wait_for_timeout(3000)  # Wait 3 seconds for JS to execute
+                    html = page.content()
+                    if html and len(html) > 1000:  # If we got substantial content, use it
+                        break
+                except Exception as timeout_error:
+                    if "timeout" in str(timeout_error).lower():
+                        # Try next strategy
+                        continue
+                    else:
+                        raise timeout_error
+            
+            # If all strategies failed but we have some HTML, use it anyway
+            if not html:
+                try:
+                    # Last resort: just get whatever is loaded
+                    page.goto(url, timeout=30000, wait_until="commit")
+                    page.wait_for_timeout(5000)  # Wait 5 seconds
+                    html = page.content()
+                except:
+                    pass
+            
             browser.close()
-            return html
+            return html if html else ""
+            
     except Exception as e:
         st.warning(f"Dynamic fetch error: {e}")
-        # Don't return empty - let the caller handle fallback
         return ""
 
 def extract_job_details(url: str):
@@ -297,7 +335,7 @@ def extract_job_details(url: str):
             status_text.text("🌐 Using browser automation for dynamic content...")
             progress_bar.progress(50)
             dynamic_html = fetch_dynamic_html(url)
-            if dynamic_html:
+            if dynamic_html and len(dynamic_html) > 1000:
                 soup = BeautifulSoup(dynamic_html, "html.parser")
                 text = soup.get_text(separator=" ", strip=True)
                 
@@ -306,12 +344,9 @@ def extract_job_details(url: str):
                 if job_desc_div:
                     text = job_desc_div.get_text(separator=" ", strip=True)
             elif len(text) < 300:
-                # If Playwright failed and we still have very little text, show error
-                st.error("⚠️ Unable to fetch dynamic content. The page may require JavaScript to load.")
-                return {
-                    "status": "error",
-                    "message": "Could not extract content from dynamic page. Playwright browser may not be installed correctly."
-                }
+                # If Playwright failed and we still have very little text, show warning but continue
+                st.warning("⚠️ Could not fully load dynamic content. Attempting extraction with available content...")
+                # Continue with whatever text we have - AI might still extract something useful
         
         status_text.text("🤖 Extracting job details with AI...")
         progress_bar.progress(60)
