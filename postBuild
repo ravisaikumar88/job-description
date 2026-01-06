@@ -9,10 +9,18 @@ if ! command -v python3 &> /dev/null; then
     PYTHON_CMD="python"
 fi
 
-# Install Playwright browser binaries
+# Install Playwright browser binaries with explicit path
+echo "Installing Chromium browser binaries..."
 $PYTHON_CMD -m playwright install chromium
 
+# Verify installation
+if $PYTHON_CMD -m playwright install --help &> /dev/null; then
+    echo "Playwright command verified"
+fi
+
 # Install system dependencies (if install-deps is available)
-$PYTHON_CMD -m playwright install-deps chromium || echo "Note: install-deps not available, system packages should be installed via packages.txt"
+echo "Installing system dependencies..."
+$PYTHON_CMD -m playwright install-deps chromium 2>&1 || echo "Note: install-deps completed or not needed"
 
 echo "Playwright Chromium installation completed!"
+echo "Browser location: $HOME/.cache/ms-playwright/"

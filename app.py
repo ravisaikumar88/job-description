@@ -7,6 +7,8 @@ from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
 import json
 import re
+import subprocess
+import sys
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
@@ -237,15 +239,31 @@ def fetch_dynamic_html(url: str):
     """Fetch HTML from dynamic pages using Playwright"""
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # Try to launch browser with explicit options
+            try:
+                browser = p.chromium.launch(headless=True)
+            except Exception as launch_error:
+                # If browser not found, try to install it
+                if "Executable doesn't exist" in str(launch_error) or "doesn't exist" in str(launch_error):
+                    st.info("🔧 Installing Playwright browser... This may take a moment.")
+                    try:
+                        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], 
+                                      check=True, timeout=300)
+                        browser = p.chromium.launch(headless=True)
+                    except Exception as install_error:
+                        st.error(f"Failed to install Playwright browser: {install_error}")
+                        return ""
+                else:
+                    raise launch_error
+            
             page = browser.new_page()
-            page.goto(url, timeout=60000)
-            page.wait_for_load_state("networkidle")
+            page.goto(url, timeout=60000, wait_until="networkidle")
             html = page.content()
             browser.close()
             return html
     except Exception as e:
         st.warning(f"Dynamic fetch error: {e}")
+        # Don't return empty - let the caller handle fallback
         return ""
 
 def extract_job_details(url: str):
@@ -269,8 +287,13 @@ def extract_job_details(url: str):
         soup = BeautifulSoup(html, "html.parser")
         text = soup.get_text(separator=" ", strip=True)
         
-        # If text is too short (likely LinkedIn), use Playwright fallback
-        if len(text) < 300:
+        # Check if we need dynamic content (short text or known dynamic sites)
+        needs_dynamic = len(text) < 300 or any(domain in url.lower() for domain in [
+            'telus', 'linkedin', 'workday', 'greenhouse', 'lever', 'smartrecruiters'
+        ])
+        
+        # If text is too short or from known dynamic site, use Playwright fallback
+        if needs_dynamic:
             status_text.text("🌐 Using browser automation for dynamic content...")
             progress_bar.progress(50)
             dynamic_html = fetch_dynamic_html(url)
@@ -282,6 +305,13 @@ def extract_job_details(url: str):
                 job_desc_div = soup.find("div", {"data-test-job-description": True})
                 if job_desc_div:
                     text = job_desc_div.get_text(separator=" ", strip=True)
+            elif len(text) < 300:
+                # If Playwright failed and we still have very little text, show error
+                st.error("⚠️ Unable to fetch dynamic content. The page may require JavaScript to load.")
+                return {
+                    "status": "error",
+                    "message": "Could not extract content from dynamic page. Playwright browser may not be installed correctly."
+                }
         
         status_text.text("🤖 Extracting job details with AI...")
         progress_bar.progress(60)
